@@ -1,16 +1,14 @@
-
 #include "crow.h"
-//#include "crow_all.h"
+#include "src/OrderController.hpp"
 
-int main()
-{
-    crow::SimpleApp app; //define your crow application
+int main(){
 
-    //define your endpoint at the root directory
-    CROW_ROUTE(app, "/")([](){
-        return "Hello world";
+    crow::SimpleApp app;
+
+    CROW_ROUTE(app, "/get-order-book")([](){
+        OrderController orderController;
+        return orderController.getOrderBook();
     });
 
-    //set the port, set the app to run on multiple threads, and run the app
     app.port(18080).multithreaded().run();
 }
