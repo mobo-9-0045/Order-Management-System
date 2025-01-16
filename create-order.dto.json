@@ -1,0 +1,47 @@
+{
+  "method": "private/buy",
+  "params": {
+    "instrument_name": "BNB_USDC",
+    "amount": 39,
+    "contracts": 12,
+    "type": "limit",
+    "label": "Mobo",
+    "price": 34,
+    "time_in_force": "immediate_or_cancel",
+    "post_only": false,
+    "reject_post_only": false,
+    "trigger_price": 300,
+    "trigger_offset": 400,
+    "trigger": "index_price",
+    "advanced": "usd",
+    "valid_until": 1736968169803,
+    "linked_order_type": "one_cancels_other",
+    "trigger_fill_condition": "complete_fill",
+    "otoco_config": [
+      {
+        "amount": 40,
+        "direction": "buy",
+        "type": "market",
+        "label": "My teest order",
+        "price": 1000,
+        "time_in_force": "immediate_or_cancel",
+        "trigger_price": 300,
+        "trigger_offset": 400,
+        "trigger": "last_price"
+      },
+      {
+        "amount": 6000,
+        "direction": "buy",
+        "type": "stop_limit",
+        "label": "Mobo by2",
+        "price": 400,
+        "time_in_force": "fill_or_kill",
+        "trigger_price": 300,
+        "trigger_offset": 400,
+        "trigger": "last_price"
+      }
+    ]
+  },
+  "jsonrpc": "2.0",
+  "id": 57
+}

@@ -2,6 +2,7 @@
 #define ORDERSERVICE_HPP
 #include <iostream>
 #include "crow.h"
+#include <cpr/cpr.h>
 
 class OrderService{
 	public:
