@@ -10,6 +10,16 @@ OrderService::~OrderService(){
     std::cout << "default destructore called" << std::endl;
 }
 
+crow::json::wvalue createErrorResponse(int status_code, const std::string& message, const std::string& hint = "") {
+    crow::json::wvalue error_response;
+    error_response["status"] = status_code;
+    error_response["message"] = message;
+    if (!hint.empty()) {
+        error_response["hint"] = hint;
+    }
+    return error_response;
+}
+
 crow::response OrderService::getOrderBook(const crow::request &req){
     std::string get_oreder_book_api = "https://www.deribit.com/api/v2/public/get_order_book";
     crow::query_string query = req.url_params;
@@ -19,9 +29,8 @@ crow::response OrderService::getOrderBook(const crow::request &req){
             400,
             "please provide instrument value"
         );
-        return crow::response(400, error_response.dump());
+        return crow::response(error_response);
     }
-    std::string instrument = "BTC-PERPETUAL";
     cpr::Response response = cpr::Get(cpr::Url{get_oreder_book_api}, cpr::Parameters{{"instrument_name", instrument}});
     if (response.status_code != 200){
         std::cout << "Error occured" << std::endl;
@@ -32,20 +41,11 @@ crow::response OrderService::getOrderBook(const crow::request &req){
         wval["data"] = crow::json::load(response.text);
         return crow::response(wval);
     }
-    crow::json::wvalue error_response;
-    error_response["status"] = response.status_code;
-    error_response["message"] = "Error occurred while fetching data";
-    return crow::response(500, error_response.dump());
-}
-
-crow::json::wvalue createErrorResponse(int status_code, const std::string& message, const std::string& hint = "") {
-    crow::json::wvalue error_response;
-    error_response["status"] = status_code;
-    error_response["message"] = message;
-    if (!hint.empty()) {
-        error_response["hint"] = hint;
-    }
-    return error_response;
+    crow::json::wvalue error_response = createErrorResponse(
+        500,
+        "Internal server error"
+    );<
+    return crow::response(error_response);
 }
 
 crow::response OrderService::getPositions(const crow::request &req) {

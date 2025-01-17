@@ -8,7 +8,7 @@ class OrderService{
 	public:
 		OrderService();
 		~OrderService();
-		crow::response getOrderBook();
+		crow::response getOrderBook(const crow::request &req);
 		crow::response getPositions(const crow::request &req);
 	private:
 		int order_id;
