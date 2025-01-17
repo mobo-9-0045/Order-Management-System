@@ -9,9 +9,9 @@ int main(){
     //     return "geting token function";
     // });
 
-    CROW_ROUTE(app, "/get-order-book")([](){
+    CROW_ROUTE(app, "/get-order-book")([](const crow::request &req){
         OrderService orderService;
-        return orderService.getOrderBook();
+        return orderService.getOrderBook(req);
     });
 
     CROW_ROUTE(app, "/cancel-order")([](){

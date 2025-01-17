@@ -10,10 +10,19 @@ OrderService::~OrderService(){
     std::cout << "default destructore called" << std::endl;
 }
 
-crow::response OrderService::getOrderBook(){
+crow::response OrderService::getOrderBook(const crow::request &req){
     std::string get_oreder_book_api = "https://www.deribit.com/api/v2/public/get_order_book";
+    crow::query_string query = req.url_params;
+    const char* instrument = query.get("instrument");
+    if (!instrument){
+        crow::json::wvalue error_response = createErrorResponse(
+            400,
+            "please provide instrument value"
+        );
+        return crow::response(400, error_response.dump());
+    }
     std::string instrument = "BTC-PERPETUAL";
-    auto response = cpr::Get(cpr::Url{get_oreder_book_api}, cpr::Parameters{{"instrument_name", instrument}});
+    cpr::Response response = cpr::Get(cpr::Url{get_oreder_book_api}, cpr::Parameters{{"instrument_name", instrument}});
     if (response.status_code != 200){
         std::cout << "Error occured" << std::endl;
     }
@@ -74,9 +83,9 @@ crow::response OrderService::getPositions(const crow::request &req) {
         crow::json::wvalue error_response = createErrorResponse(
             response.status_code,
             "Failed to fetch positions",
-            "The external API returned an error"
+            "The external API returned an error pleae check your access token"
         );
-        error_response["api_response"] = response.text; // Include the original response
+        error_response["api_response"] = response.text;
         return crow::response(response.status_code, error_response.dump());
     }
     try {
