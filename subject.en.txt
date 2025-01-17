@@ -1,0 +1,115 @@
+🎯 **Core Requirements:**
+
+1️⃣ **Order Management Functions:**
+   - ✅ Place order
+   - ❌ Cancel order
+   - ✏️ Modify order
+   - 📜 Get orderbook
+   - 📊 View current positions
+
+2️⃣ **Real-Time Market Data Streaming via WebSocket:**
+   - 🌐 Implement WebSocket server functionality
+   - 🔔 Allow clients to subscribe to symbols
+   - 📡 Stream continuous orderbook updates for subscribed symbols
+
+🌍 **Market Coverage:**
+   - 📈 Instruments: Spot, Futures, and Options
+   - 🔄 Scope: All supported symbols on Deribit Test API
+
+---
+
+🛠️ **Technical Requirements:**
+
+1️⃣ **Implementation:**
+   - 🖥️ Must be in C++ for high performance.
+
+2️⃣ **Low-Latency Performance:**
+   - ⚡ Minimize processing and communication delays.
+   - 🔄 Use asynchronous mechanisms (e.g., Boost.Asio).
+
+3️⃣ **Error Handling & Logging:**
+   - 🛡️ Gracefully handle API rate limits, disconnections, and invalid inputs.
+   - 📜 Log important events and errors for debugging.
+
+4️⃣ **WebSocket Server Functionality:**
+   - 🤝 Manage multiple client connections efficiently.
+   - 📬 Handle subscription requests for specific symbols.
+   - 🚀 Broadcast updates to relevant clients with minimal delay.
+
+5️⃣ **Data Handling:**
+   - 📥 Fetch data from the Deribit API (REST and WebSocket).
+   - 🔄 Efficiently parse and relay data to clients over WebSocket.
+
+6️⃣ **Authentication:**
+   - 🔑 Use API keys to securely authenticate requests to the Deribit API.
+
+---
+
+🚀 **Steps to Get Started:**
+
+1️⃣ **Research Deribit API:**
+   - 🔍 Understand REST API for placing, modifying, and canceling orders.
+   - 🌐 Learn WebSocket API for real-time orderbook updates.
+
+2️⃣ **Prototype REST Interactions:**
+   - 🔧 Use `cpr` to authenticate and send requests for:
+     - 📝 Placing orders.
+     - ❌ Canceling orders.
+     - ✏️ Modifying orders.
+     - 📜 Fetching orderbooks and positions.
+
+3️⃣ **Build the WebSocket Server:**
+   - 🛠️ Use Crow (or another framework) to:
+     - 🤝 Handle WebSocket connections.
+     - 🔔 Manage symbol subscriptions.
+     - 📡 Push real-time updates.
+
+4️⃣ **Optimize for Low Latency:**
+   - ⚡ Ensure minimal delays in data processing.
+   - 🚀 Optimize WebSocket message handling.
+
+5️⃣ **Implement Logging and Error Handling:**
+   - 📜 Log key events and errors.
+   - 🛡️ Handle API rate limits, WebSocket disconnects, and malformed requests.
+
+---
+
+📐 **High-Level Architecture:**
+
+1️⃣ **REST Client (HTTP):**
+   - Handles requests to Deribit’s REST API for order management and market data.
+
+2️⃣ **WebSocket Client (to Deribit):**
+   - Connects to Deribit’s WebSocket API for real-time updates.
+
+3️⃣ **WebSocket Server (in Crow):**
+   - Manages client connections and subscriptions.
+   - 📡 Relays real-time updates to subscribed clients.
+
+4️⃣ **Core Logic:**
+   - 🚦 Manages subscriptions and data flow.
+   - ⚡ Implements low-latency optimizations.
+
+5️⃣ **Error Logging:**
+   - Logs all API interactions and WebSocket messages for debugging.
+
+---
+
+💡 **Example Workflow:**
+
+1️⃣ **Client subscribes to BTC-USD Futures orderbook via WebSocket:**
+   - 🌐 Crow WebSocket server receives the subscription request.
+   - 🔗 System connects to Deribit WebSocket API for BTC-USD Futures.
+   - 📡 Streams real-time updates to your WebSocket server.
+   - 🚀 WebSocket server pushes updates to the subscribed client.
+
+2️⃣ **Client places a buy order via HTTP REST:**
+   - 🛠️ System sends the request to Deribit’s REST API.
+   - ✅ API processes and acknowledges the order.
+
+---
+
+📦 **Optional Enhancements:**
+- 📊 Add monitoring metrics (e.g., connection uptime, latency).
+- 🔒 Implement secure WebSocket connections (WSS).
+- 📋 Include comprehensive documentation for setup and troubleshooting.
