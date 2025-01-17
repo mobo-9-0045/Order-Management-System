@@ -97,7 +97,7 @@ curl -X POST http://localhost:18080/place-order \
 
 
 exemple to modify the order
-curl -X PUT http://localhost:18080/update-order \
+curl -X PUT http://localhost:18080/modify-order \
 -H "Content-Type: application/json" \
 -d '{
   "params": {
@@ -111,6 +111,6 @@ curl -X PUT http://localhost:18080/update-order \
     "trigger_price": 300,
     "trigger_offset": 400,
     "mmp": false,
-    "valid_until": '"$(($(date +%s%N)/1000000 + 3600000))"'
+    "valid_until": '"$(($(date +%s%N)/1000000 + 00000600))"'
   }
 }'
