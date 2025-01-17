@@ -1,25 +1,26 @@
 #include "crow.h"
-#include "src/OrderController.hpp"
+#include "src/OrderService.hpp"
 
 int main(){
 
     crow::SimpleApp app;
 
+    // CROW_ROUTE(app, "/get-auth-token")([](){
+    //     return "geting token function";
+    // });
+
     CROW_ROUTE(app, "/get-order-book")([](){
-        OrderController orderController;
-        return orderController.getOrderBook();
+        OrderService orderService;
+        return orderService.getOrderBook();
     });
 
     CROW_ROUTE(app, "/cancel-order")([](){
         return "Cancel an order";
     });
 
-    CROW_ROUTE(app, "/get-positions")([](){
-        // i should get subaccouns first i just hardcode it from here that's it
-        std::string get_postions_api = "https://test.deribit.com/api/v2/private/get_positions?currency=BTC&kind=future&subaccount_id=64910";
-        auto response = cpr::Get(cpr::Url{get_postions_api});
-        printf("response: %d\n", response.status_code);
-        return response.text;
+    CROW_ROUTE(app, "/get-positions")([](const crow::request &req, crow::response &res){
+        OrderService orderService;
+        return orderService.getPositions(req, res);
     });
 
     CROW_ROUTE(app, "/place-order")([](){
