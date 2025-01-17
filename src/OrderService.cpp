@@ -31,7 +31,31 @@ crow::response OrderService::getOrderBook(){
 }
 
 void OrderService::getPositions(const crow::request &req, crow::response &res){
-    std::string get_postions_api = "https://test.deribit.com/api/v2/private/get_positions?currency=BTC&kind=future&subaccount_id=64910";
+    // i shoul get subaccount here
+    crow::query_string querry = req.url_params;
+
+    const char* currency = querry.get("currency");
+    const char* kind = querry.get("kind");
+    const char* subaccount = "64910";
+
+    std::cout << "currency: " << currency << std::endl;
+    std::cout << "currency: " << kind << std::endl;
+    std::cout << "currency: " << subaccount << std::endl;
+    
+    if (currency == nullptr || kind == nullptr || subaccount == nullptr){
+        crow::json::wvalue wval;
+        wval["status"] = 400;
+        wval["data"] = "Bad request";
+        wval["hint"] = "Hint!";
+        res.write(wval.dump());
+        res.end();
+        return ;
+    }
+    std::cout << "querry: " << querry << std::endl;
+    std::string get_postions_api = "https://test.deribit.com/api/v2/private/get_positions?currency=" 
+    +std::string(currency)
+    +"&kind=" + std::string(kind)
+    +"&subaccount_id=" + std::string(subaccount);
 
     cpr::Header headers{{
         "Authorization", std::string("Bearer ")+AUTH_TOKEN
@@ -40,7 +64,6 @@ void OrderService::getPositions(const crow::request &req, crow::response &res){
         cpr::Url{get_postions_api},
         headers
     );
-    printf("status code: %d\n", response.status_code);
     res.write(response.text);
     res.end();
 }
