@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trading Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .otoco-config {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-remove {
+            background-color: #f44336;
+        }
+        .btn:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <h2>Trading Order Form</h2>
+    <form id="tradingForm" onsubmit="submitForm(event)">
+
+        <h3>Parameters</h3>
+        <div class="form-group">
+            <label>Instrument Name:</label>
+            <input type="text" name="instrument_name" value="BNB_USDC" required>
+        </div>
+        <div class="form-group">
+            <label>Amount:</label>
+            <input type="number" name="amount" value="39" required>
+        </div>
+        <div class="form-group">
+            <label>Contracts:</label>
+            <input type="number" name="contracts" value="12" required>
+        </div>
+        <div class="form-group">
+            <label>Type:</label>
+            <select name="type" required>
+                <option value="limit">limit</option>
+                <option value="market">market</option>
+                <option value="market_limit">market limit</option>
+                <option value="stop_market">stop market</option>
+                <option value="stop_limit">stop limit</option>
+                <option value="take_market">take market</option>
+                <option value="take_limit">take limit</option>
+                <option value="tailing_stop">tailing stop</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Label:</label>
+            <input type="text" name="label" value="Mobo">
+        </div>
+        <div class="form-group">
+            <label>Price:</label>
+            <input type="number" name="price" value="34" required>
+        </div>
+        <div class="form-group">
+            <label>Time in Force:</label>
+            <select name="time_in_force" required>
+                <option value="fill_or_kill">fill or kill</option>
+                <option value="good_till_canceled">good till canceled</option>
+                <option value="good_till_day">good till day</option>
+                <option value="immediate_or_cancel">immediate or cancel</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Post Only:</label>
+            <select name="post_only">
+                <option value="true">true</option>
+                <option value="false">false</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Reject Post Only:</label>
+            <select name="reject_post_only">
+                <option value="true">true</option>
+                <option value="false">false</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Reduce Only:</label>
+            <select name="reduce_only">
+                <option value="true">true</option>
+                <option value="false">false</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Trigger Price:</label>
+            <input type="number" name="trigger_price" value="300">
+        </div>
+        <div class="form-group">
+            <label>Trigger Offset:</label>
+            <input type="number" name="trigger_offset" value="400">
+        </div>
+        <div class="form-group">
+            <label>Trigger:</label>
+            <select name="trigger">
+                <option value="stop_loss">stop loss</option>
+                <option value="take_profit">take profit</option>
+                <option value="trailing">trailing</option>
+                <option value="trigger_orders">trigger orders</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Advanced:</label>
+            <select name="advanced">
+                <option value="implv">implv</option>
+                <option value="usd">usd</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Linked Order Type:</label>
+            <select name="linked_order_type">
+                <option value="one_triggers_other">one triggers other</option>
+                <option value="one_cancels_other">one cancels other</option>
+                <option value="one_triggers_one_cancels_other">one triggers one cancels other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Trigger Fill Condition:</label>
+            <input type="text" name="trigger_fill_condition" value="complete_fill">
+        </div>
+
+        <!-- OTOCO Config Section -->
+        <h3>OTOCO Configuration</h3>
+        <div id="otocoContainer"></div>
+        <button type="button" class="btn" onclick="addOtocoConfig()">Add OTOCO Config</button>
+
+        <!-- JSON-RPC Fields -->
+        <h3>JSON-RPC</h3>
+        <div class="form-group">
+            <label>JSON-RPC Version:</label>
+            <input type="text" name="jsonrpc" value="2.0" required>
+        </div>
+        <div class="form-group">
+            <label>ID:</label>
+            <input type="number" name="id" value="57" required>
+        </div>
+
+        <button type="submit" class="btn">Submit Order</button>
+    </form>
+
+    <script>
+        function createOtocoConfig() {
+            const container = document.createElement('div');
+            container.className = 'otoco-config';
+            
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Amount:</label>
+                    <input type="number" name="otoco_amount" required>
+                </div>
+                <div class="form-group">
+                    <label>Direction:</label>
+                    <select name="otoco_direction" required>
+                        <option value="sell">sell</option>
+                        <option value="buy">buy</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Type:</label>
+                    <select name="otoco_type" required>
+                        <option value="limit">limit</option>
+                        <option value="market">market</option>
+                        <option value="market_limit">market limit</option>
+                        <option value="stop_market">stop market</option>
+                        <option value="stop_limit">stop limit</option>
+                        <option value="take_market">take market</option>
+                        <option value="take_limit">take limit</option>
+                        <option value="tailing_stop">tailing stop</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Label:</label>
+                    <input type="text" name="otoco_label">
+                </div>
+                <div class="form-group">
+                    <label>Price:</label>
+                    <input type="number" name="otoco_price" required>
+                </div>
+                <div class="form-group">
+                    <label>Time in Force:</label>
+                    <select name="otoco_time_in_force" required>
+                        <option value="fill_or_kill">fill or kill</option>
+                        <option value="good_till_canceled">good till canceled</option>
+                        <option value="good_till_day">good till day</option>
+                        <option value="immediate_or_cancel">immediate or cancel</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Reduce Only:</label>
+                    <select name="otoco_reduce_only">
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Trigger Price:</label>
+                    <input type="number" name="otoco_trigger_price">
+                </div>
+                <div class="form-group">
+                    <label>Trigger Offset:</label>
+                    <input type="number" name="otoco_trigger_offset">
+                </div>
+                <div class="form-group">
+                    <label>Trigger:</label>
+                    <select name="otoco_trigger">
+                        <option value="last_price">last price</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-remove" onclick="this.parentElement.remove()">Remove</button>
+            `;
+            
+            return container;
+        }
+
+        function addOtocoConfig() {
+            const container = document.getElementById('otocoContainer');
+            container.appendChild(createOtocoConfig());
+        }
+
+        // Add initial OTOCO config
+        addOtocoConfig();
+
+        function submitForm(event) {
+            event.preventDefault();
+            
+            // Collect form data
+            const formData = new FormData(event.target);
+            
+            // Build the request body
+            const requestBody = {
+                params: {
+                    instrument_name: formData.get('instrument_name'),
+                    amount: Number(formData.get('amount')),
+                    contracts: Number(formData.get('contracts')),
+                    type: formData.get('type'),
+                    label: formData.get('label'),
+                    price: Number(formData.get('price')),
+                    time_in_force: formData.get('time_in_force'),
+                    post_only: formData.get('post_only') === 'true',
+                    reject_post_only: formData.get('reject_post_only') === 'true',
+                    reduce_only: formData.get('reduce_only') === 'true',
+                    trigger_price: Number(formData.get('trigger_price')),
+                    trigger_offset: Number(formData.get('trigger_offset')),
+                    trigger: formData.get('trigger'),
+                    advanced: formData.get('advanced'),
+                    valid_until: Date.now(),
+                    linked_order_type: formData.get('linked_order_type'),
+                    trigger_fill_condition: formData.get('trigger_fill_condition'),
+                    otoco_config: []
+                },
+            };
+
+            // Collect OTOCO configs
+            const otocoConfigs = document.getElementsByClassName('otoco-config');
+            for (const config of otocoConfigs) {
+                const otocoData = {
+                    amount: Number(config.querySelector('[name="otoco_amount"]').value),
+                    direction: config.querySelector('[name="otoco_direction"]').value,
+                    type: config.querySelector('[name="otoco_type"]').value,
+                    label: config.querySelector('[name="otoco_label"]').value,
+                    price: Number(config.querySelector('[name="otoco_price"]').value),
+                    time_in_force: config.querySelector('[name="otoco_time_in_force"]').value,
+                    reduce_only: config.querySelector('[name="otoco_reduce_only"]').value === 'true',
+                    trigger_price: Number(config.querySelector('[name="otoco_trigger_price"]').value),
+                    trigger_offset: Number(config.querySelector('[name="otoco_trigger_offset"]').value),
+                    trigger: config.querySelector('[name="otoco_trigger"]').value
+                };
+                requestBody.params.otoco_config.push(otocoData);
+            }
+
+            console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+            fetch("http://localhost:18080/place-order/", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                alert('Order submitted successfully!');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error submitting order!');
+            });
+        }
+    </script>
+</body>
+</html>

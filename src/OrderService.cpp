@@ -20,6 +20,13 @@ crow::json::wvalue createErrorResponse(int status_code, const std::string& messa
     return error_response;
 }
 
+bool authorize(){
+    if (AUTH_TOKEN.empty()) {
+        return false;
+    }
+    return true;
+}
+
 crow::response OrderService::getOrderBook(const crow::request &req){
     std::string get_oreder_book_api = "https://www.deribit.com/api/v2/public/get_order_book";
     crow::query_string query = req.url_params;
@@ -70,13 +77,12 @@ crow::response OrderService::getPositions(const crow::request &req) {
         + std::string(currency) 
         + "&kind=" + std::string(kind) 
         + "&subaccount_id=" + std::string(subaccount);
-        if (AUTH_TOKEN.empty()) {
-            crow::json::wvalue error_response = createErrorResponse(
+        if (!authorize()){
+            return crow::response(createErrorResponse(
                 401,
-                "Unauthorized",
-                "Please export your token to environment variables using the export command"
-            );
-            return crow::response(401, error_response.dump());
+                "UnAuthorized",
+                "PLease check yout token"
+            ));
         }
         cpr::Header headers{{"Authorization", std::string("Bearer ")+AUTH_TOKEN}};
         cpr::Response response = cpr::Get(cpr::Url{get_positions_api}, headers);
@@ -102,6 +108,52 @@ crow::response OrderService::getPositions(const crow::request &req) {
             "Failed to parse JSON",
             exception.what()
         );
-        return crow::response(500, error_response.dump());
+        return crow::response(500, error_response);
     }
+}
+
+crow::response OrderService::placeOrder(const crow::request &req){
+    try{
+        crow::json::rvalue request_body = crow::json::load(req.body);
+
+        if (!request_body){
+            return crow::response(createErrorResponse(
+                400,
+                "Bad request",
+                "Invalid data"
+            ));
+        }
+        const std::string place_order_api = "https://test.deribit.com/api/v2/private/buy";
+        if (!authorize()){
+            return crow::response(createErrorResponse(
+                401,
+                "UnAuthorized",
+                "PLease check yout token"
+            ));
+        }
+        cpr::Header headers{{"Authorization", std::string("Bearer ")+AUTH_TOKEN}};
+        cpr::Response response = cpr::Post(cpr::Url(place_order_api), headers);
+        if (response.status_code != 204){
+            return crow::response(createErrorResponse(
+                400,
+                "Somthin went wrong",
+                response.text
+            ));
+        }
+        crow::json::wvalue success_response;
+        success_response["status"] = response.status_code;
+        success_response["data"] = crow::json::load(response.text);
+        return crow::response(success_response);
+    }
+    catch(const std::exception &exception){
+        return crow::response(createErrorResponse(
+            500,
+            "Internal server error",
+            exception.what()
+        ));
+    }
+}
+
+void OrderService::testClang(){
+    std::cout << "Test clang" << std::endl;
 }
