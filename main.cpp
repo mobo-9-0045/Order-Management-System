@@ -20,9 +20,11 @@ int main(){
     });
 
     CROW_ROUTE(app, "/place-order").methods(crow::HTTPMethod::POST)([&orderService](const crow::request &req){
-        // std::string get_oreder_time_api = "https://www.deribit.com/api/v2/public/get_time"; 
-        // std::cout << get_oreder_time_api << std::endl;
         return orderService.placeOrder(req);
+    });
+
+    CROW_ROUTE(app, "/modify-order").methods(crow::HTTPMethod::PUT)([&orderService](const crow::request &req){
+        return orderService.modifyOrder(req);
     });
 
     // more rooute must be added

@@ -1,11 +1,11 @@
 🎯 **Core Requirements:**
 
 1️⃣ **Order Management Functions:**
-   - ✅ Place order
-   - ❌ Cancel order
-   - ✏️ Modify order
-   - 📜 Get orderbook
-   - 📊 View current positions
+   - ✅ Place order ✅
+   - ❌ Cancel order ✅
+   - ✏️ Modify order 
+   - 📜 Get orderbook ✅
+   - 📊 View current positions ✅
 
 2️⃣ **Real-Time Market Data Streaming via WebSocket:**
    - 🌐 Implement WebSocket server functionality

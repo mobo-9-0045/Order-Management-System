@@ -45,3 +45,64 @@
   "jsonrpc": "2.0",
   "id": 57
 }
+
+
+exemple post request to place order
+curl -X POST http://localhost:18080/place-order \
+-H "Content-Type: application/json" \
+-d '{
+  "params": {
+    "instrument_name": "BNB_USDC",
+    "amount": 39,
+    "contracts": 12,
+    "type": "limit",
+    "label": "Mobo",
+    "price": 34,
+    "time_in_force": "fill_or_kill",
+    "post_only": true,
+    "reject_post_only": true,
+    "reduce_only": true,
+    "trigger_price": 300,
+    "trigger_offset": 400,
+    "trigger": "stop_loss",
+    "advanced": "implv",
+    "valid_until": '"$(($(date +%s%N)/1000000 + 3600000))"', 
+    "linked_order_type": "one_triggers_other",
+    "trigger_fill_condition": "complete_fill",
+    "otoco_config": [
+      {
+        "amount": 1000,
+        "direction": "sell",
+        "type": "limit",
+        "label": "lable",
+        "price": 300,
+        "time_in_force": "fill_or_kill",
+        "reduce_only": true,
+        "trigger_price": 300,
+        "trigger_offset": 400,
+        "trigger": "last_price"
+      }
+    ]
+  }
+}'
+
+
+
+exemple to modify the order
+curl -X PUT http://localhost:18080/update-order \
+-H "Content-Type: application/json" \
+-d '{
+  "params": {
+    "order_id": "443",
+    "amount": 3000,
+    "contracts": 40,
+    "price": 4000,
+    "post_only": false,
+    "reduce_only": false,
+    "advanced": "implv",
+    "trigger_price": 300,
+    "trigger_offset": 400,
+    "mmp": false,
+    "valid_until": '"$(($(date +%s%N)/1000000 + 3600000))"'
+  }
+}'

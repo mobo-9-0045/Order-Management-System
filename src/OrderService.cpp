@@ -154,6 +154,44 @@ crow::response OrderService::placeOrder(const crow::request &req){
     }
 }
 
-void OrderService::testClang(){
-    std::cout << "Test clang" << std::endl;
+crow::response OrderService::modifyOrder(const crow::request &req){
+    try{
+        crow::json::rvalue request_body = crow::json::load(req.body);
+        std::cout << "modifyOrder function invoked" << std::endl;
+        if (!request_body){
+            return crow::response(createErrorResponse(
+                400,
+                "Bad request",
+                "Invalid data"
+            ));
+        }
+        const std::string place_order_api = "https://test.deribit.com/api/v2/private/edit";
+        if (!authorize()){
+            return crow::response(createErrorResponse(
+                401,
+                "UnAuthorized",
+                "PLease check yout token"
+            ));
+        }
+        cpr::Header headers{{"Authorization", std::string("Bearer ")+AUTH_TOKEN}};
+        cpr::Response response = cpr::Put(cpr::Url(place_order_api), headers);
+        if (response.status_code != 200){
+            return crow::response(createErrorResponse(
+                400,
+                "Somthin went wrong",
+                response.text
+            ));
+        }
+        crow::json::wvalue success_response;
+        success_response["status"] = response.status_code;
+        success_response["data"] = crow::json::load(response.text);
+        return crow::response(success_response);
+    }
+    catch(const std::exception &exception){
+        return crow::response(createErrorResponse(
+            500,
+            "Internal server error",
+            exception.what()
+        ));
+    }
 }

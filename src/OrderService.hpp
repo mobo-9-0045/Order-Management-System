@@ -11,7 +11,7 @@ class OrderService{
 		crow::response getOrderBook(const crow::request &req);
 		crow::response getPositions(const crow::request &req);
 		crow::response placeOrder(const crow::request &req);
-		void testClang();
+		crow::response modifyOrder(const crow::request &req);
 	private:
 		int order_id;
 		std::string order_status;
