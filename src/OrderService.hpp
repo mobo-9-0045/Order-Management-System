@@ -9,7 +9,7 @@ class OrderService{
 		OrderService();
 		~OrderService();
 		crow::response getOrderBook();
-		void getPositions(const crow::request &req, crow::response &res);
+		crow::response getPositions(const crow::request &req);
 	private:
 		int order_id;
 		std::string order_status;

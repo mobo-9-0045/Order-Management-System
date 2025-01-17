@@ -18,9 +18,9 @@ int main(){
         return "Cancel an order";
     });
 
-    CROW_ROUTE(app, "/get-positions")([](const crow::request &req, crow::response &res){
+    CROW_ROUTE(app, "/get-positions")([](const crow::request &req){
         OrderService orderService;
-        return orderService.getPositions(req, res);
+        return orderService.getPositions(req);
     });
 
     CROW_ROUTE(app, "/place-order")([](){

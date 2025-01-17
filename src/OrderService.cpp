@@ -1,8 +1,7 @@
 #include"OrderService.hpp"
 #include <cpr/cpr.h>
 
-#define AUTH_TOKEN "1739643141759.1TR6H7Om.IWh0X3adwDCxg9IdHSlDKkjcTbQnrS8_qXDRgmcJeXQUim_KqSfBxFUcqvylx1tc7u1RRmI3MdB2JDLPbcCzbXMwEBGHsEMaJh1lp3hklCNFanBnh63uoXMex7YtdArBjpGvWOTTTDJ4ovChDInDEo4623xgpvQ15OCkfr6C1sDjEeaAqjRdJdQb8GKzDwVYdlWIkPXL08acfu55R5sIMFpHzB8jI3u0llM3625Of_V9SFyc6q8l8eaJfK9oKPC75LCwRVCgeR0AAcZbSRsCiRa80k17iHsEaHCny4ZCo9HIIN20uSYkU-SrPBig7NOUovC2Q548-CCoec23uE2LNjxhafpq88lWroPFGKFw8AJ1uAY05A25uAib6f2KJaO2gQ"
-
+const std::string AUTH_TOKEN = std::getenv("AUTH_TOKEN");
 OrderService::OrderService(){
     std::cout << "default constructore called" << std::endl;
 }
@@ -30,40 +29,69 @@ crow::response OrderService::getOrderBook(){
     return crow::response(500, error_response.dump());
 }
 
-void OrderService::getPositions(const crow::request &req, crow::response &res){
-    // i shoul get subaccount here
-    crow::query_string querry = req.url_params;
-
-    const char* currency = querry.get("currency");
-    const char* kind = querry.get("kind");
-    const char* subaccount = "64910";
-
-    std::cout << "currency: " << currency << std::endl;
-    std::cout << "currency: " << kind << std::endl;
-    std::cout << "currency: " << subaccount << std::endl;
-    
-    if (currency == nullptr || kind == nullptr || subaccount == nullptr){
-        crow::json::wvalue wval;
-        wval["status"] = 400;
-        wval["data"] = "Bad request";
-        wval["hint"] = "Hint!";
-        res.write(wval.dump());
-        res.end();
-        return ;
+crow::json::wvalue createErrorResponse(int status_code, const std::string& message, const std::string& hint = "") {
+    crow::json::wvalue error_response;
+    error_response["status"] = status_code;
+    error_response["message"] = message;
+    if (!hint.empty()) {
+        error_response["hint"] = hint;
     }
-    std::cout << "querry: " << querry << std::endl;
-    std::string get_postions_api = "https://test.deribit.com/api/v2/private/get_positions?currency=" 
-    +std::string(currency)
-    +"&kind=" + std::string(kind)
-    +"&subaccount_id=" + std::string(subaccount);
+    return error_response;
+}
 
-    cpr::Header headers{{
-        "Authorization", std::string("Bearer ")+AUTH_TOKEN
-    }};
-    auto response = cpr::Get(
-        cpr::Url{get_postions_api},
-        headers
-    );
-    res.write(response.text);
-    res.end();
+crow::response OrderService::getPositions(const crow::request &req) {
+    crow::query_string query = req.url_params;
+
+    const char* currency = query.get("currency");
+    const char* kind = query.get("kind");
+    const char* subaccount = query.get("subaccount");
+
+    if (!currency || !kind || !subaccount) {
+        crow::json::wvalue error_response = createErrorResponse(
+            400,
+            "Bad request",
+            "Please provide a query similar to: /get-positions?currency=BTC&kind=future&subaccount_id=number"
+        );
+        error_response["currency expected values"] = "[BTC, ETH, EURR, USDC, USDT, any]";
+        error_response["kind expected values"] = "[future, future_combo, option, option_combo, spot]";
+        return crow::response(400, error_response.dump());
+    }
+    std::string get_positions_api = "https://test.deribit.com/api/v2/private/get_positions?currency=" 
+    + std::string(currency) 
+    + "&kind=" + std::string(kind) 
+    + "&subaccount_id=" + std::string(subaccount);
+    if (AUTH_TOKEN.empty()) {
+        crow::json::wvalue error_response = createErrorResponse(
+            401,
+            "Unauthorized",
+            "Please export your token to environment variables using the export command"
+        );
+        return crow::response(401, error_response.dump());
+    }
+    cpr::Header headers{{"Authorization", std::string("Bearer ")+AUTH_TOKEN}};
+    cpr::Response response = cpr::Get(cpr::Url{get_positions_api}, headers);
+    if (response.status_code != 200) {
+        crow::json::wvalue error_response = createErrorResponse(
+            response.status_code,
+            "Failed to fetch positions",
+            "The external API returned an error"
+        );
+        error_response["api_response"] = response.text; // Include the original response
+        return crow::response(response.status_code, error_response.dump());
+    }
+    try {
+        crow::json::rvalue api_response = crow::json::load(response.text);
+
+        crow::json::wvalue success_response;
+        success_response["status"] = 200;
+        success_response["positions"] = api_response;
+        return crow::response(success_response);
+    } catch (const std::exception & exception) {
+        crow::json::wvalue error_response = createErrorResponse(
+            500,
+            "Failed to parse JSON",
+            exception.what()
+        );
+        return crow::response(500, error_response.dump());
+    }
 }

@@ -10,18 +10,15 @@
 #                                                                              #
 # **************************************************************************** #
 
+CXX = c++
+CXXFLAGS = -Wall -Wextra -Werror
+LDFLAGS = -L/usr/local/lib -lcpr -lpthread
+
 SRC = main.cpp src/OrderService.cpp
+OUT = btc
 
-NAME = btc
+$(OUT): $(SRC)
+	$(CXX) $(CXXFLAGS) $(SRC) -o $(OUT) $(LDFLAGS)
 
-all : ${NAME}
-
-${NAME} : ${SRC}
-	c++ -Wall -Wextra -Werror ${SRC} -o ${NAME} -L/usr/local/lib -I/usr/local/include -lcpr -lpthread
-
-clean : 
-	rm -f ${NAME}
-
-fclean : clean
-
-re : fclean all
+clean:
+	rm -f $(OUT)
