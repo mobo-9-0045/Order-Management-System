@@ -22,3 +22,5 @@ $(OUT): $(SRC)
 
 clean:
 	rm -f $(OUT)
+re: 
+	clean
