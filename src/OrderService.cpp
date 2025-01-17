@@ -101,7 +101,7 @@ crow::response OrderService::getPositions(const crow::request &req) {
         success_response["status"] = 200;
         success_response["positions"] = api_response;
         return crow::response(success_response);
-    } 
+    }
     catch (const std::exception & exception) {
         crow::json::wvalue error_response = createErrorResponse(
             500,
@@ -112,10 +112,27 @@ crow::response OrderService::getPositions(const crow::request &req) {
     }
 }
 
+long long getCurrentTime() {
+    try {
+        std::string get_time_api = "https://www.deribit.com/api/v2/public/get_time";
+        cpr::Response response = cpr::Get(cpr::Url{get_time_api});
+
+        if (response.status_code == 200) {
+            auto json_response = crow::json::load(response.text);
+            if (json_response["result"].t() == crow::json::type::Integer) {
+                return json_response["result"].i();
+            }
+        }
+    } catch (const std::exception &exception) {
+        std::cerr << "Failed to fetch time: " << exception.what() << std::endl;
+    }
+    return 0;
+}
+
 crow::response OrderService::placeOrder(const crow::request &req){
     try{
         crow::json::rvalue request_body = crow::json::load(req.body);
-
+        std::cout << "body: " << request_body << std::endl;
         if (!request_body){
             return crow::response(createErrorResponse(
                 400,
@@ -131,12 +148,21 @@ crow::response OrderService::placeOrder(const crow::request &req){
                 "PLease check yout token"
             ));
         }
+        long long current_time = getCurrentTime();
+        if (current_time == 0) {
+            return crow::response(createErrorResponse(500, "Failed to fetch current time"));
+        }
+
         cpr::Header headers{{"Authorization", std::string("Bearer ")+AUTH_TOKEN}};
-        cpr::Response response = cpr::Post(cpr::Url(place_order_api), headers);
-        if (response.status_code != 204){
+        cpr::Response response = cpr::Post(
+                cpr::Url(place_order_api),
+                headers,
+                cpr::Body(req.body, {"valid_until"})
+            );
+        if (response.status_code != 200){
+            std::cout << "response: " << response.text << std::endl;
             return crow::response(createErrorResponse(
                 400,
-                "Somthin went wrong",
                 response.text
             ));
         }
@@ -157,7 +183,6 @@ crow::response OrderService::placeOrder(const crow::request &req){
 crow::response OrderService::modifyOrder(const crow::request &req){
     try{
         crow::json::rvalue request_body = crow::json::load(req.body);
-        std::cout << "modifyOrder function invoked" << std::endl;
         if (!request_body){
             return crow::response(createErrorResponse(
                 400,

@@ -51,39 +51,47 @@ exemple post request to place order
 curl -X POST http://localhost:18080/place-order \
 -H "Content-Type: application/json" \
 -d '{
+  "method": "private/buy",
   "params": {
     "instrument_name": "BNB_USDC",
-    "amount": 39,
-    "contracts": 12,
-    "type": "limit",
-    "label": "Mobo",
-    "price": 34,
-    "time_in_force": "fill_or_kill",
-    "post_only": true,
-    "reject_post_only": true,
-    "reduce_only": true,
-    "trigger_price": 300,
-    "trigger_offset": 400,
-    "trigger": "stop_loss",
-    "advanced": "implv",
-    "valid_until": '"$(($(date +%s%N)/1000000 + 3600000))"', 
-    "linked_order_type": "one_triggers_other",
-    "trigger_fill_condition": "complete_fill",
+    "amount": 200,
+    "contracts": 3,
+    "type": "market",
+    "label": "lablel",
+    "price": 30,
+    "time_in_force": "good_til_cancelled",
+    "max_show": 1,
+    "trigger_price": 30,
+    "trigger_offset": 300,
+    "linked_order_type": "one_cancels_other",
     "otoco_config": [
       {
-        "amount": 1000,
+        "amount": 300,
+        "direction": "buy",
+        "type": "stop_market",
+        "label": "laeble",
+        "price": 300,
+        "time_in_force": "good_til_cancelled",
+        "trigger_price": 3000,
+        "trigger_offset": 300,
+        "trigger": "index_price"
+      },
+      {
+        "amount": 300,
         "direction": "sell",
         "type": "limit",
-        "label": "lable",
+        "label": "lasdf",
         "price": 300,
         "time_in_force": "fill_or_kill",
-        "reduce_only": true,
         "trigger_price": 300,
-        "trigger_offset": 400,
-        "trigger": "last_price"
+        "trigger_offset": 30,
+        "trigger": "index_price"
       }
-    ]
-  }
+    ],
+    "valid_until": '"$(($(date +%s%N)/1000000 + 00000600))"'
+  },
+  "jsonrpc": "2.0",
+  "id": 16
 }'
 
 
