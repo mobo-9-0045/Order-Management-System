@@ -2,6 +2,7 @@
 #include <cpr/cpr.h>
 
 const std::string AUTH_TOKEN = std::getenv("AUTH_TOKEN");
+
 OrderService::OrderService(){
     std::cout << "default constructore called" << std::endl;
 }

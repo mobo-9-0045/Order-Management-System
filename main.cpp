@@ -29,7 +29,9 @@ int main(){
         // std::cout << get_oreder_time_api << std::endl;
     });
 
-    // more rooute must be added
-
+    CROW_WEBSOCKET_ROUTE(app, "/socket").onopen([&](crow::websocket::connection& conn){
+        std::cout << "connection: " << conn.get_remote_ip() << std::endl;
+        std::cout << "connected: " << std::endl;
+    });
     app.port(18080).multithreaded().run();
 }

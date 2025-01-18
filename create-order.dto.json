@@ -114,3 +114,6 @@ curl -X PUT http://localhost:18080/modify-order \
     "valid_until": '"$(($(date +%s%N)/1000000 + 00000600))"'
   }
 }'
+
+//socket testing
+curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Host: localhost:8080" -H "Origin: http://localhost" http://localhost:18080/socket
