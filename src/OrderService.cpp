@@ -219,7 +219,6 @@ void OrderService::ft_connect(crow::websocket::connection& conn){
         std::lock_guard<std::mutex> _(this->clients_mutex);
         this->clients.insert(&conn);
     }
-    this->init_deribit_connection();
     conn.send_text("Welcome! There are " + std::to_string(clients.size()) + " clients connected");
     this->broadcast("A new client has joined!\n");
 }
@@ -243,26 +242,4 @@ void OrderService::ft_close(crow::websocket::connection &conn, const std::string
         clients.erase(&conn);
     }
     this->broadcast("A client has disconnected!");
-}
-
-
-void OrderService::init_deribit_connection() {
-    this->ws_client.init_asio();
-
-    websocketpp::lib::error_code ec;
-    this->ws_conn = this->ws_client.get_connection("wss://test.deribit.com/api/v2/public/subscribe", ec);
-    if (ec) {
-        std::cout << "Connection error: " << ec.message() << std::endl;
-        return;
-    }
-    
-    this->ws_client.connect(this->ws_conn);
-    this->ws_client.send(this->ws_conn->get_handle(), "Test message", websocketpp::frame::opcode::text);
-    std::thread([this]() {
-        try {
-            this->ws_client.run();
-        } catch (const std::exception& e) {
-            std::cout << "WebSocket error: " << e.what() << std::endl;
-        }
-    }).detach();
 }

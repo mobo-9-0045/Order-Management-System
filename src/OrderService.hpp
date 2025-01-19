@@ -32,11 +32,6 @@ class OrderService{
 		std::string order_status;
 		std::set<crow::websocket::connection*> clients;
     	std::mutex clients_mutex;
-
-		using wsClient = websocketpp::client<websocketpp::config::asio_tls_client>;
-        wsClient ws_client;
-        wsClient::connection_ptr ws_conn;;
-		void init_deribit_connection();
 };
 
 #endif
