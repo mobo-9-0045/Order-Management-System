@@ -1,3 +1,10 @@
 btc
 create-order.dto.json
+node_modules
+ws.js
+package-lock.json
+package.json
+.gitignore
+Dockerfile
 subject.en.txt
+place-order.html

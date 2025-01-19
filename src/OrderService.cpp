@@ -205,8 +205,6 @@ crow::response OrderService::modifyOrder(const crow::request &req){
     }
 }
 
-// socket handling
-
 void OrderService::broadcast(const std::string& message) {
     std::lock_guard<std::mutex> _(this->clients_mutex);
     for(auto client : clients) {
@@ -222,18 +220,39 @@ void OrderService::ft_connect(crow::websocket::connection& conn){
     }
     conn.send_text("Welcome! There are " + std::to_string(clients.size()) + " clients connected");
     std::string message = "{\"jsonrpc\":\"2.0\",\"method\":\"public/subscribe\",\"params\":{\"channels\":[\"ticker.BTC-PERPETUAL.raw\"]}}";
-    this->send_websocket_message(this->ws_url + "/public/subscribe", message);
     this->broadcast("A new client has subscribed!\n");
 }
 
 void OrderService::ft_message(crow::websocket::connection &conn, const std::string &data, bool is_binary){
-    if (is_binary){
-        std::cout << "data" << data << std::endl;
-        std::cout << "Is binary" << std::endl;
-        return ;
+    try{
+        if (is_binary){
+            std::cout << "invalid data: " << data << std::endl;
+            return ;
+        }
+        crow::json::rvalue received_json = crow::json::load(data);
+        if (!received_json) {
+            throw std::runtime_error("Invalid JSON data");
+        }
+        crow::json::wvalue modified_json;
+        modified_json["jsonrpc"] = "2.0";
+        if (received_json.has("params")) {
+            modified_json["params"] = received_json["params"];
+        }
+        if (received_json.has("id")) {
+            modified_json["id"] = received_json["id"];
+        }
+        else {
+            modified_json["id"] = 1;
+        }
+        std::string modified_data = modified_json.dump();
+        std::cout << "modified_data: " << modified_data << std::endl;
+        this->send_websocket_message(this->ws_url + "/public/subscribe", data);
+        conn.send_text("subscibed: "+ data);
+        std::cout << "data: " << data << std::endl;
     }
-    conn.send_text("Hello from server");
-    std::cout << "Not binary" << std::endl;
+    catch(const std::exception &exception){
+        std::cout << "Error: " << exception.what() << std::endl;
+    }
 }
 
 
@@ -256,7 +275,8 @@ std::shared_ptr<websocketpp::lib::asio::ssl::context> on_tls_init(websocketpp::c
             websocketpp::lib::asio::ssl::context::no_sslv3 |
             websocketpp::lib::asio::ssl::context::single_dh_use);
         ctx->set_verify_mode(websocketpp::lib::asio::ssl::verify_none);
-    } catch (std::exception& e) {
+    }
+    catch (std::exception& e) {
         std::cout << "TLS initialization failed: " << e.what() << std::endl;
     }
     return ctx;
