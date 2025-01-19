@@ -5,6 +5,7 @@ const std::string AUTH_TOKEN = std::getenv("AUTH_TOKEN");
 
 OrderService::OrderService(){
     std::cout << "default constructore called" << std::endl;
+    this->ws_url = "wss://test.deribit.com/ws/api/v2";
 }
 
 OrderService::~OrderService(){
@@ -220,7 +221,9 @@ void OrderService::ft_connect(crow::websocket::connection& conn){
         this->clients.insert(&conn);
     }
     conn.send_text("Welcome! There are " + std::to_string(clients.size()) + " clients connected");
-    this->broadcast("A new client has joined!\n");
+    std::string message = "{\"jsonrpc\":\"2.0\",\"method\":\"public/subscribe\",\"params\":{\"channels\":[\"ticker.BTC-PERPETUAL.raw\"]}}";
+    this->send_websocket_message(this->ws_url + "/public/subscribe", message);
+    this->broadcast("A new client has subscribed!\n");
 }
 
 void OrderService::ft_message(crow::websocket::connection &conn, const std::string &data, bool is_binary){
@@ -242,4 +245,53 @@ void OrderService::ft_close(crow::websocket::connection &conn, const std::string
         clients.erase(&conn);
     }
     this->broadcast("A client has disconnected!");
+}
+
+std::shared_ptr<websocketpp::lib::asio::ssl::context> on_tls_init(websocketpp::connection_hdl) {
+    auto ctx = std::make_shared<websocketpp::lib::asio::ssl::context>(websocketpp::lib::asio::ssl::context::tlsv12);
+
+    try {
+        ctx->set_options(websocketpp::lib::asio::ssl::context::default_workarounds |
+            websocketpp::lib::asio::ssl::context::no_sslv2 |
+            websocketpp::lib::asio::ssl::context::no_sslv3 |
+            websocketpp::lib::asio::ssl::context::single_dh_use);
+        ctx->set_verify_mode(websocketpp::lib::asio::ssl::verify_none);
+    } catch (std::exception& e) {
+        std::cout << "TLS initialization failed: " << e.what() << std::endl;
+    }
+    return ctx;
+}
+
+void OrderService::send_websocket_message(const std::string& uri, const std::string& message) {
+    client ws_client;
+
+    try {
+        ws_client.clear_access_channels(websocketpp::log::alevel::all);
+
+        ws_client.init_asio();
+
+        ws_client.set_tls_init_handler(on_tls_init);
+
+        websocketpp::lib::error_code ec;
+        client::connection_ptr con = ws_client.get_connection(uri, ec);
+
+        if (ec) {
+            std::cerr << "Error creating connection: " << ec.message() << std::endl;
+            return;
+        }
+
+        ws_client.connect(con);
+
+        con->set_open_handler([&ws_client, &con, &message](websocketpp::connection_hdl) {
+            ws_client.send(con->get_handle(), message, websocketpp::frame::opcode::text);
+            std::cout << "Message sent: " << message << std::endl;
+            ws_client.stop();
+        });
+
+        ws_client.run();
+
+    } 
+    catch (const websocketpp::exception& e) {
+        std::cerr << "WebSocket++ Exception: " << e.what() << std::endl;
+    }
 }
