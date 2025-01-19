@@ -169,7 +169,7 @@ crow::response OrderService::modifyOrder(const crow::request &req){
                 "Invalid data"
             ));
         }
-        const std::string place_order_api = "https://test.deribit.com/api/v2/private/edit";
+        const std::string modify_order_api = "https://test.deribit.com/api/v2/private/edit";
         if (!authorize()){
             return crow::response(createErrorResponse(
                 401,
@@ -179,7 +179,7 @@ crow::response OrderService::modifyOrder(const crow::request &req){
         }
         cpr::Header headers{{"Authorization", std::string("Bearer ")+AUTH_TOKEN}};
         cpr::Response response = cpr::Put(
-            cpr::Url(place_order_api), 
+            cpr::Url(modify_order_api), 
             headers,
             cpr::Body(req.body)
         );
@@ -202,4 +202,67 @@ crow::response OrderService::modifyOrder(const crow::request &req){
             exception.what()
         ));
     }
+}
+
+// socket handling
+
+void OrderService::broadcast(const std::string& message) {
+    std::lock_guard<std::mutex> _(this->clients_mutex);
+    for(auto client : clients) {
+        client->send_text(message);
+    }
+};
+
+void OrderService::ft_connect(crow::websocket::connection& conn){
+    std::cout << "New client connected" << std::endl;
+    {
+        std::lock_guard<std::mutex> _(this->clients_mutex);
+        this->clients.insert(&conn);
+    }
+    this->init_deribit_connection();
+    conn.send_text("Welcome! There are " + std::to_string(clients.size()) + " clients connected");
+    this->broadcast("A new client has joined!\n");
+}
+
+void OrderService::ft_message(crow::websocket::connection &conn, const std::string &data, bool is_binary){
+    if (is_binary){
+        std::cout << "data" << data << std::endl;
+        std::cout << "Is binary" << std::endl;
+        return ;
+    }
+    conn.send_text("Hello from server");
+    std::cout << "Not binary" << std::endl;
+}
+
+
+void OrderService::ft_close(crow::websocket::connection &conn, const std::string &data){
+    std::cout << data << std::endl;
+    std::cout << "Client disconnected" << std::endl;
+    {
+        std::lock_guard<std::mutex> _(clients_mutex);
+        clients.erase(&conn);
+    }
+    this->broadcast("A client has disconnected!");
+}
+
+
+void OrderService::init_deribit_connection() {
+    this->ws_client.init_asio();
+
+    websocketpp::lib::error_code ec;
+    this->ws_conn = this->ws_client.get_connection("wss://test.deribit.com/api/v2/public/subscribe", ec);
+    if (ec) {
+        std::cout << "Connection error: " << ec.message() << std::endl;
+        return;
+    }
+    
+    this->ws_client.connect(this->ws_conn);
+    this->ws_client.send(this->ws_conn->get_handle(), "Test message", websocketpp::frame::opcode::text);
+    std::thread([this]() {
+        try {
+            this->ws_client.run();
+        } catch (const std::exception& e) {
+            std::cout << "WebSocket error: " << e.what() << std::endl;
+        }
+    }).detach();
 }

@@ -12,7 +12,7 @@
 
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror
-LDFLAGS = -L/usr/local/lib -lcpr -lpthread
+LDFLAGS = -L/usr/local/lib -lcpr -lpthread -lssl -lcrypto
 
 SRC = main.cpp src/OrderService.cpp
 OUT = btc

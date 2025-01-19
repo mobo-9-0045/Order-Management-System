@@ -8,6 +8,16 @@ int main(){
     crow::SimpleApp app;
     OrderService orderService;
 
+    std::set<crow::websocket::connection*> clients;
+    std::mutex clients_mutex;
+
+    auto broadcast = [&](const std::string& message) {
+        std::lock_guard<std::mutex> _(clients_mutex);
+        for(auto client : clients) {
+            client->send_text(message);
+        }
+    };
+
     CROW_ROUTE(app, "/get-order-book")([&orderService](const crow::request &req){
         return orderService.getOrderBook(req);
     });
@@ -29,9 +39,21 @@ int main(){
         // std::cout << get_oreder_time_api << std::endl;
     });
 
-    CROW_WEBSOCKET_ROUTE(app, "/socket").onopen([&](crow::websocket::connection& conn){
-        std::cout << "connection: " << conn.get_remote_ip() << std::endl;
-        std::cout << "connected: " << std::endl;
+    CROW_WEBSOCKET_ROUTE(app, "/public-instument-name")
+    .onopen([&](crow::websocket::connection &conn){
+        orderService.ft_connect(conn);
+    }).
+    onmessage([&](crow::websocket::connection &conn, const std::string& data, bool is_binary){
+        orderService.ft_message(conn, data, is_binary);
+    })
+    .onclose([&](crow::websocket::connection &conn, const std::string& data){
+        orderService.ft_close(conn, data);
+    });
+
+    CROW_ROUTE(app, "/broadcast").methods(crow::HTTPMethod::POST)
+    ([&](const crow::request& req){
+        broadcast("Server announcement: " + req.body);
+        return crow::response(200, "Broadcast sent");
     });
     app.port(18080).multithreaded().run();
 }
