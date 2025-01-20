@@ -6,7 +6,7 @@ const std::string AUTH_TOKEN = std::getenv("AUTH_TOKEN");
 OrderService::OrderService(){
     std::cout << "default constructore called" << std::endl;
     this->ws_url = "wss://test.deribit.com/ws/api/v2";
-    this->get_order_book_api = "https://www.deribit.com/api/v2/public/get_order_book";
+    this->get_order_book_api = "https://www.deribit.com/api/v2/public/get_order_book?";
 }
 
 OrderService::~OrderService(){
@@ -31,9 +31,10 @@ bool authorize(){
 }
 
 crow::response OrderService::getOrderBook(const crow::request &req){
-    std::string get_oreder_book_api = this->get_order_book_api;
+    std::cout << "req.url paramss: " << req.url_params << std::endl;
     crow::query_string query = req.url_params;
     const char* instrument = query.get("instrument");
+    std::cout << "query: " << query << std::endl;
     if (!instrument){
         crow::json::wvalue error_response = createErrorResponse(
             400,
@@ -41,7 +42,9 @@ crow::response OrderService::getOrderBook(const crow::request &req){
         );
         return crow::response(error_response);
     }
-    cpr::Response response = cpr::Get(cpr::Url{get_oreder_book_api}, cpr::Parameters{{"instrument_name", instrument}});
+    std::string get_oreder_book_api = this->get_order_book_api + "instrument_name=" + instrument;
+    std::cout << "order book api: " << get_oreder_book_api << std::endl;
+    cpr::Response response = cpr::Get(cpr::Url{get_oreder_book_api});
     if (response.status_code != 200){
         std::cout << "Error occured" << std::endl;
     }
@@ -213,16 +216,6 @@ void OrderService::broadcast(const std::string& message) {
     }
 };
 
-void OrderService::ft_connect(crow::websocket::connection& conn){
-    std::cout << "New client connected" << std::endl;
-    {
-        std::lock_guard<std::mutex> _(this->clients_mutex);
-        this->clients.insert(&conn);
-    }
-    conn.send_text("Welcome! There are " + std::to_string(clients.size()) + " clients connected");
-    this->broadcast("A new client has subscribed!\n");
-}
-
 std::vector<std::string> extract_channels(const std::string& json_data) {
     std::vector<std::string> result;
 
@@ -247,7 +240,88 @@ std::vector<std::string> extract_channels(const std::string& json_data) {
     return result;
 }
 
+void OrderService::ft_connect(crow::websocket::connection& conn){
+    std::cout <<"connection adress -> " <<&conn << std::endl;
+    std::cout << "New client connected" << std::endl;
+    {
+        std::lock_guard<std::mutex> _(this->clients_mutex);
+        this->clients.insert(&conn);
+    }
+    {
+        std::lock_guard<std::mutex> lock(thread_mutex);
+        client_running[&conn] = true;
+    }
+    conn.send_text("Welcome! There are " + std::to_string(clients.size()) + " clients connected");
+    this->broadcast("A new client has subscribed!\n");
+}
+
+void OrderService::start_orderbook_updates(crow::websocket::connection* conn, const std::string& data) {
+    stop_orderbook_updates(conn);
+    std::thread update_thread([this, conn, data]() {
+        try {
+            crow::request original_req;
+            while (true) {
+                {
+                    std::lock_guard<std::mutex> lock(thread_mutex);
+                    if (!client_running[conn]) {
+                        break;
+                    }
+                }
+                
+                std::vector<std::string> channels = extract_channels(data);
+                for (const auto& channel : channels) {
+                    try {
+                        original_req.url_params = this->get_order_book_api + "instrument=" + channel;
+                        std::cout << "Url: " << original_req.url << std::endl;
+                        
+                        crow::response response = this->getOrderBook(original_req);
+                        std::string response_text = response.body;
+                        
+                        // Check if connection is still valid before sending
+                        {
+                            std::lock_guard<std::mutex> lock(thread_mutex);
+                            if (client_running[conn]) {
+                                conn->send_text("OrderBook: " + response_text);
+                            } else {
+                                return;
+                            }
+                        }
+                    } catch (const std::exception& e) {
+                        std::cerr << "Error processing channel " << channel << ": " << e.what() << std::endl;
+                        continue;
+                    }
+                    
+                    std::this_thread::sleep_for(std::chrono::seconds(10));
+                }
+                
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        } 
+        catch (const std::exception& e) {
+            std::cerr << "Thread error: " << e.what() << std::endl;
+        }
+    });    
+    {
+        std::lock_guard<std::mutex> lock(thread_mutex);
+        client_threads[conn] = std::move(update_thread);
+    }
+}
+
+void OrderService::stop_orderbook_updates(crow::websocket::connection* conn) {
+    std::lock_guard<std::mutex> lock(thread_mutex);
+    
+    auto thread_it = client_threads.find(conn);
+    if (thread_it != client_threads.end()) {
+        client_running[conn] = false;
+        if (thread_it->second.joinable()) {
+            thread_it->second.join();
+        }
+        client_threads.erase(thread_it);
+    }
+}
+
 void OrderService::ft_message(crow::websocket::connection &conn, const std::string &data, bool is_binary){
+    std::cout <<"connection adress -> " <<&conn << std::endl;
     try{
         if (is_binary){
             std::cout << "invalid data: " << data << std::endl;
@@ -255,24 +329,7 @@ void OrderService::ft_message(crow::websocket::connection &conn, const std::stri
         }
         this->send_websocket_message(this->ws_url + "/public/subscribe", data);
         conn.send_text("subscibed: "+ data);
-
-        crow::request original_req;
-        while (true) {
-            std::vector<std::string> chanels = extract_channels(data);
-            std::vector<std::string>::iterator it = chanels.begin();
-            while (it != chanels.end()){
-                std::cout << *it << std::endl;
-                original_req.url = this->get_order_book_api+"?instrument="+*it;
-                std::cout << "Url: " << original_req.url << std::endl;
-                crow::response response = this->getOrderBook(original_req);
-                std::string response_text = response.body;
-                conn.send_text("OrderBook: "+ response_text);
-                conn.send_text("");
-                sleep(10);
-                ++it;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
+        start_orderbook_updates(&conn, data);
     }
     catch(const std::exception &exception){
         std::cout << "Error: " << exception.what() << std::endl;
@@ -281,11 +338,17 @@ void OrderService::ft_message(crow::websocket::connection &conn, const std::stri
 
 
 void OrderService::ft_close(crow::websocket::connection &conn, const std::string &data){
+    std::cout <<"connection adress -> " <<&conn << std::endl;
     std::cout << data << std::endl;
     std::cout << "Client disconnected" << std::endl;
+    stop_orderbook_updates(&conn);
     {
         std::lock_guard<std::mutex> _(clients_mutex);
         clients.erase(&conn);
+    }
+    {
+        std::lock_guard<std::mutex> lock(thread_mutex);
+        client_running.erase(&conn);
     }
     this->broadcast("A client has disconnected!");
 }

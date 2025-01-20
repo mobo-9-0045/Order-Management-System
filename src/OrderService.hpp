@@ -37,6 +37,11 @@ class OrderService{
 		std::string get_order_book_api;
 		typedef websocketpp::client<websocketpp::config::asio_tls_client> client;
 		void send_websocket_message(const std::string& uri, const std::string& message);
+		std::map<crow::websocket::connection*, std::thread> client_threads;
+		std::map<crow::websocket::connection*, bool> client_running;
+		std::mutex thread_mutex;
+		void start_orderbook_updates(crow::websocket::connection* conn, const std::string& data);
+    	void stop_orderbook_updates(crow::websocket::connection* conn);
 };
 
 #endif
