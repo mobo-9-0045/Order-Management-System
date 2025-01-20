@@ -6,6 +6,7 @@ const std::string AUTH_TOKEN = std::getenv("AUTH_TOKEN");
 OrderService::OrderService(){
     std::cout << "default constructore called" << std::endl;
     this->ws_url = "wss://test.deribit.com/ws/api/v2";
+    this->get_order_book_api = "https://www.deribit.com/api/v2/public/get_order_book";
 }
 
 OrderService::~OrderService(){
@@ -30,7 +31,7 @@ bool authorize(){
 }
 
 crow::response OrderService::getOrderBook(const crow::request &req){
-    std::string get_oreder_book_api = "https://www.deribit.com/api/v2/public/get_order_book";
+    std::string get_oreder_book_api = this->get_order_book_api;
     crow::query_string query = req.url_params;
     const char* instrument = query.get("instrument");
     if (!instrument){
@@ -219,8 +220,31 @@ void OrderService::ft_connect(crow::websocket::connection& conn){
         this->clients.insert(&conn);
     }
     conn.send_text("Welcome! There are " + std::to_string(clients.size()) + " clients connected");
-    std::string message = "{\"jsonrpc\":\"2.0\",\"method\":\"public/subscribe\",\"params\":{\"channels\":[\"ticker.BTC-PERPETUAL.raw\"]}}";
     this->broadcast("A new client has subscribed!\n");
+}
+
+std::vector<std::string> extract_channels(const std::string& json_data) {
+    std::vector<std::string> result;
+
+    try {
+        auto parsed_json = crow::json::load(json_data);
+
+        if (parsed_json && parsed_json["params"].has("channels")) {
+            auto channels = parsed_json["params"]["channels"];
+            for (const auto& channel : channels) {
+                std::string channel_str = channel.s();
+                size_t pos1 = channel_str.find('.');
+                size_t pos2 = channel_str.find('-');
+                if (pos1 != std::string::npos) {
+                    result.push_back(channel_str.substr(pos1 + 1, pos2 - pos1 - 1)); // Between the period and hyphen
+                }
+            }
+        }
+    } 
+    catch (const std::exception& e) {
+        std::cerr << "Error parsing JSON: " << e.what() << std::endl;
+    }
+    return result;
 }
 
 void OrderService::ft_message(crow::websocket::connection &conn, const std::string &data, bool is_binary){
@@ -229,26 +253,26 @@ void OrderService::ft_message(crow::websocket::connection &conn, const std::stri
             std::cout << "invalid data: " << data << std::endl;
             return ;
         }
-        crow::json::rvalue received_json = crow::json::load(data);
-        if (!received_json) {
-            throw std::runtime_error("Invalid JSON data");
-        }
-        crow::json::wvalue modified_json;
-        modified_json["jsonrpc"] = "2.0";
-        if (received_json.has("params")) {
-            modified_json["params"] = received_json["params"];
-        }
-        if (received_json.has("id")) {
-            modified_json["id"] = received_json["id"];
-        }
-        else {
-            modified_json["id"] = 1;
-        }
-        std::string modified_data = modified_json.dump();
-        std::cout << "modified_data: " << modified_data << std::endl;
         this->send_websocket_message(this->ws_url + "/public/subscribe", data);
         conn.send_text("subscibed: "+ data);
-        std::cout << "data: " << data << std::endl;
+
+        crow::request original_req;
+        while (true) {
+            std::vector<std::string> chanels = extract_channels(data);
+            std::vector<std::string>::iterator it = chanels.begin();
+            while (it != chanels.end()){
+                std::cout << *it << std::endl;
+                original_req.url = this->get_order_book_api+"?instrument="+*it;
+                std::cout << "Url: " << original_req.url << std::endl;
+                crow::response response = this->getOrderBook(original_req);
+                std::string response_text = response.body;
+                conn.send_text("OrderBook: "+ response_text);
+                conn.send_text("");
+                sleep(10);
+                ++it;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
     catch(const std::exception &exception){
         std::cout << "Error: " << exception.what() << std::endl;

@@ -34,6 +34,7 @@ class OrderService{
 		std::string order_status;
 		std::set<crow::websocket::connection*> clients;
     	std::mutex clients_mutex;
+		std::string get_order_book_api;
 		typedef websocketpp::client<websocketpp::config::asio_tls_client> client;
 		void send_websocket_message(const std::string& uri, const std::string& message);
 };
