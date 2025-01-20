@@ -7,6 +7,9 @@ OrderService::OrderService(){
     std::cout << "default constructore called" << std::endl;
     this->ws_url = "wss://test.deribit.com/ws/api/v2";
     this->get_order_book_api = "https://www.deribit.com/api/v2/public/get_order_book?";
+    this->modify_order_api = "https://test.deribit.com/api/v2/private/edit";
+    this->get_positions_api = "https://test.deribit.com/api/v2/private/get_positions?currency=";
+    this->place_order_api = "https://test.deribit.com/api/v2/private/buy";
 }
 
 OrderService::~OrderService(){
@@ -31,10 +34,8 @@ bool authorize(){
 }
 
 crow::response OrderService::getOrderBook(const crow::request &req){
-    std::cout << "req.url paramss: " << req.url_params << std::endl;
     crow::query_string query = req.url_params;
     const char* instrument = query.get("instrument");
-    std::cout << "query: " << query << std::endl;
     if (!instrument){
         crow::json::wvalue error_response = createErrorResponse(
             400,
@@ -43,7 +44,6 @@ crow::response OrderService::getOrderBook(const crow::request &req){
         return crow::response(error_response);
     }
     std::string get_oreder_book_api = this->get_order_book_api + "instrument_name=" + instrument;
-    std::cout << "order book api: " << get_oreder_book_api << std::endl;
     cpr::Response response = cpr::Get(cpr::Url{get_oreder_book_api});
     if (response.status_code != 200){
         std::cout << "Error occured" << std::endl;
@@ -79,10 +79,9 @@ crow::response OrderService::getPositions(const crow::request &req) {
             error_response["kind expected values"] = "[future, future_combo, option, option_combo, spot]";
             return crow::response(error_response);
         }
-        std::string get_positions_api = "https://test.deribit.com/api/v2/private/get_positions?currency=" 
-        + std::string(currency) 
-        + "&kind=" + std::string(kind) 
-        + "&subaccount_id=" + std::string(subaccount);
+
+        this->get_positions_api = this->get_positions_api + std::string(currency) + "&kind=" + std::string(kind) + "&subaccount_id=" + std::string(subaccount);
+
         if (!authorize()){
             return crow::response(createErrorResponse(
                 401,
@@ -121,7 +120,6 @@ crow::response OrderService::getPositions(const crow::request &req) {
 crow::response OrderService::placeOrder(const crow::request &req){
     try{
         crow::json::rvalue request_body = crow::json::load(req.body);
-        std::cout << "body: " << request_body << std::endl;
         if (!request_body){
             return crow::response(createErrorResponse(
                 400,
@@ -129,7 +127,6 @@ crow::response OrderService::placeOrder(const crow::request &req){
                 "Invalid data"
             ));
         }
-        const std::string place_order_api = "https://test.deribit.com/api/v2/private/buy";
         if (!authorize()){
             return crow::response(createErrorResponse(
                 401,
@@ -139,12 +136,11 @@ crow::response OrderService::placeOrder(const crow::request &req){
         }
         cpr::Header headers{{"Authorization", std::string("Bearer ")+AUTH_TOKEN}};
         cpr::Response response = cpr::Post(
-                cpr::Url(place_order_api),
+                cpr::Url(this->place_order_api),
                 headers,
                 cpr::Body(req.body)
         );
         if (response.status_code != 200){
-            std::cout << "response: " << response.text << std::endl;
             return crow::response(createErrorResponse(
                 400,
                 response.text
@@ -174,7 +170,6 @@ crow::response OrderService::modifyOrder(const crow::request &req){
                 "Invalid data"
             ));
         }
-        const std::string modify_order_api = "https://test.deribit.com/api/v2/private/edit";
         if (!authorize()){
             return crow::response(createErrorResponse(
                 401,
@@ -184,7 +179,7 @@ crow::response OrderService::modifyOrder(const crow::request &req){
         }
         cpr::Header headers{{"Authorization", std::string("Bearer ")+AUTH_TOKEN}};
         cpr::Response response = cpr::Put(
-            cpr::Url(modify_order_api), 
+            cpr::Url(this->modify_order_api), 
             headers,
             cpr::Body(req.body)
         );
@@ -241,7 +236,6 @@ std::vector<std::string> extract_channels(const std::string& json_data) {
 }
 
 void OrderService::ft_connect(crow::websocket::connection& conn){
-    std::cout <<"connection adress -> " <<&conn << std::endl;
     std::cout << "New client connected" << std::endl;
     {
         std::lock_guard<std::mutex> _(this->clients_mutex);
@@ -272,21 +266,19 @@ void OrderService::start_orderbook_updates(crow::websocket::connection* conn, co
                 for (const auto& channel : channels) {
                     try {
                         original_req.url_params = this->get_order_book_api + "instrument=" + channel;
-                        std::cout << "Url: " << original_req.url << std::endl;
-                        
                         crow::response response = this->getOrderBook(original_req);
                         std::string response_text = response.body;
-                        
-                        // Check if connection is still valid before sending
                         {
                             std::lock_guard<std::mutex> lock(thread_mutex);
                             if (client_running[conn]) {
                                 conn->send_text("OrderBook: " + response_text);
-                            } else {
+                            } 
+                            else {
                                 return;
                             }
                         }
-                    } catch (const std::exception& e) {
+                    } 
+                    catch (const std::exception& e) {
                         std::cerr << "Error processing channel " << channel << ": " << e.what() << std::endl;
                         continue;
                     }
@@ -321,7 +313,6 @@ void OrderService::stop_orderbook_updates(crow::websocket::connection* conn) {
 }
 
 void OrderService::ft_message(crow::websocket::connection &conn, const std::string &data, bool is_binary){
-    std::cout <<"connection adress -> " <<&conn << std::endl;
     try{
         if (is_binary){
             std::cout << "invalid data: " << data << std::endl;
@@ -329,7 +320,7 @@ void OrderService::ft_message(crow::websocket::connection &conn, const std::stri
         }
         this->send_websocket_message(this->ws_url + "/public/subscribe", data);
         conn.send_text("subscibed: "+ data);
-        start_orderbook_updates(&conn, data);
+        this->start_orderbook_updates(&conn, data);
     }
     catch(const std::exception &exception){
         std::cout << "Error: " << exception.what() << std::endl;
@@ -338,8 +329,6 @@ void OrderService::ft_message(crow::websocket::connection &conn, const std::stri
 
 
 void OrderService::ft_close(crow::websocket::connection &conn, const std::string &data){
-    std::cout <<"connection adress -> " <<&conn << std::endl;
-    std::cout << data << std::endl;
     std::cout << "Client disconnected" << std::endl;
     stop_orderbook_updates(&conn);
     {
@@ -350,6 +339,7 @@ void OrderService::ft_close(crow::websocket::connection &conn, const std::string
         std::lock_guard<std::mutex> lock(thread_mutex);
         client_running.erase(&conn);
     }
+    std::cout << "data: " << data << std::endl;
     this->broadcast("A client has disconnected!");
 }
 
@@ -391,7 +381,6 @@ void OrderService::send_websocket_message(const std::string& uri, const std::str
 
         con->set_open_handler([&ws_client, &con, &message](websocketpp::connection_hdl) {
             ws_client.send(con->get_handle(), message, websocketpp::frame::opcode::text);
-            std::cout << "Message sent: " << message << std::endl;
             ws_client.stop();
         });
 
