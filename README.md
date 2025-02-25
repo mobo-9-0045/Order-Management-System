@@ -1,5 +1,8 @@
 # Order Management System
- [![My Skills](https://skillicons.dev/icons?i=expressjs,docker,linux,vim,vscode,c,cpp,kubernetes,nginx)](https://skillicons.dev)
+```
+ls technologies: 
+```
+[![My Skills](https://skillicons.dev/icons?i=docker,c,cpp)](https://skillicons.dev)
 This project is a simple order management system built using the **Crow C++ web framework**. It provides RESTful API endpoints for managing orders, positions, and broadcasting messages to connected WebSocket clients.
 
 ## Features
